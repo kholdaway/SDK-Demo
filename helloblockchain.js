@@ -15,17 +15,6 @@ try {
 // Create a client blockchin.
 var chain = hfc.newChain(config.chainName);
 
-// This list of suites is used by GRPC to establish secure connections.  GRPC is the protocol used by the SDK
-// to connect to the fabric.
-process.env['GRPC_SSL_CIPHER_SUITES'] = 'ECDHE-RSA-AES128-GCM-SHA256:' +
-    'ECDHE-RSA-AES128-SHA256:' +
-    'ECDHE-RSA-AES256-SHA384:' +
-    'ECDHE-RSA-AES256-GCM-SHA384:' +
-    'ECDHE-ECDSA-AES128-GCM-SHA256:' +
-    'ECDHE-ECDSA-AES128-SHA256:' +
-    'ECDHE-ECDSA-AES256-SHA384:' +
-    'ECDHE-ECDSA-AES256-GCM-SHA384';
-
 var certPath = __dirname+"/src/"+config.deployRequest.chaincodePath+"/certificate.pem";
 
 // Read and process the credentials.json
@@ -43,7 +32,7 @@ var users = network.users;
 
 // Determining if we are running on a startup or HSBN network based on the url
 // of the discovery host name.  The HSBN will contain the string zone.
-var isHSBN = peers[0].discovery_host.indexOf('zone') >= 0 ? true : false;
+var isHSBN = peers[0].discovery_host.indexOf('secure') >= 0 ? true : false;
 var network_id = Object.keys(network.ca);
 var ca_url = "grpcs://" + network.ca[network_id].discovery_host + ":" + network.ca[network_id].discovery_port;
 
@@ -54,10 +43,10 @@ var ca_url = "grpcs://" + network.ca[network_id].discovery_host + ":" + network.
 var uuid = network_id[0].substring(0, 8);
 chain.setKeyValStore(hfc.newFileKeyValStore(__dirname + '/keyValStore-' + uuid));
 var certFile = 'us.blockchain.ibm.com.cert';
-init()
+init();
 function init(){
 	if (isHSBN) {
-		certFile = 'zone.blockchain.ibm.com.cert';
+		certFile = '0.secure.blockchain.ibm.com.cert';
 	}
 	fs.createReadStream(certFile).pipe(fs.createWriteStream(certPath));
 	enrollAndRegisterUsers();
@@ -80,10 +69,10 @@ function enrollAndRegisterUsers() {
         });
     }
 
-    console.log("\n\n------------- peers and caserver information: -------------");
+    /*console.log("\n\n------------- peers and caserver information: -------------");
     console.log(chain.getPeers());
     console.log(chain.getMemberServices());
-    console.log('-----------------------------------------------------------\n\n');
+    console.log('-----------------------------------------------------------\n\n');*/
 
     // Enroll a 'admin' who is already registered because it is
     // listed in fabric/membersrvc/membersrvc.yaml with it's one time password.
@@ -98,7 +87,6 @@ function enrollAndRegisterUsers() {
         var enrollName = config.user.username; //creating a new user
         var registrationRequest = {
             enrollmentID: enrollName,
-            account: config.user.account,
             affiliation: config.user.affiliation
         };
         chain.registerAndEnroll(registrationRequest, function (err, user) {
@@ -124,7 +112,7 @@ function deployChaincode(user) {
         args: args,
 	chaincodePath : config.deployRequest.chaincodePath,
         // the location where the startup and HSBN store the certificates
-        certificatePath: isHSBN ? config.hsbn_cert_path : config.x86_cert_path
+        certificatePath: network.cert_path
     };
 
     // Trigger the deploy transaction
