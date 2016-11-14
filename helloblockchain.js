@@ -5,6 +5,15 @@ var util = require('util');
 var fs = require('fs');
 const https = require('https');
 var config;
+
+const activeChaincodeID = process.env.ACTIVE_CHAINCODE_ID;
+if(activeChaincodeID === undefined || activeChaincodeID === ''){
+    console.error('Missing ACTIVE_CHAINCODE_ID environment variable.');
+    process.exit(1);
+}
+
+console.log("\nActive Chaincode ID : " + activeChaincodeID);
+
 try {
     config = JSON.parse(fs.readFileSync(__dirname + '/config.json', 'utf8'));
 } catch (err) {
@@ -15,7 +24,7 @@ try {
 // Create a client blockchin.
 var chain = hfc.newChain(config.chainName);
 
-var certPath = __dirname+"/src/"+config.deployRequest.chaincodePath+"/certificate.pem";
+var certPath = __dirname + "/certificate.pem";
 
 // Read and process the credentials.json
 var network;
@@ -44,12 +53,12 @@ var uuid = network_id[0].substring(0, 8);
 chain.setKeyValStore(hfc.newFileKeyValStore(__dirname + '/keyValStore-' + uuid));
 var certFile = 'us.blockchain.ibm.com.cert';
 init();
-function init(){
-	if (isHSBN) {
-		certFile = '0.secure.blockchain.ibm.com.cert';
-	}
-	fs.createReadStream(certFile).pipe(fs.createWriteStream(certPath));
-	enrollAndRegisterUsers();
+function init() {
+    if (isHSBN) {
+        certFile = '0.secure.blockchain.ibm.com.cert';
+    }
+    fs.createReadStream(certFile).pipe(fs.createWriteStream(certPath));
+    enrollAndRegisterUsers();
 }
 
 function enrollAndRegisterUsers() {
@@ -94,42 +103,8 @@ function enrollAndRegisterUsers() {
 
             console.log("\nEnrolled and registered " + enrollName + " successfully");
 
-            //setting timers for fabric waits
-            chain.setDeployWaitTime(config.deployWaitTime);
-            console.log("\nDeploying chaincode ...");
-            deployChaincode(user);
+            invokeOnUser(user);
         });
-    });
-}
-
-function deployChaincode(user) {
-    var args = getArgs(config.deployRequest);
-    // Construct the deploy request
-    var deployRequest = {
-        // Function to trigger
-        fcn: config.deployRequest.functionName,
-        // Arguments to the initializing function
-        args: args,
-	chaincodePath : config.deployRequest.chaincodePath,
-        // the location where the startup and HSBN store the certificates
-        certificatePath: network.cert_path
-    };
-
-    // Trigger the deploy transaction
-    var deployTx = user.deploy(deployRequest);
-
-    // Print the deploy results
-    deployTx.on('complete', function (results) {
-        // Deploy request completed successfully
-        testChaincodeID = results.chaincodeID;
-        console.log("\nChaincode ID : " + testChaincodeID);
-        console.log(util.format("\nSuccessfully deployed chaincode: request=%j, response=%j", deployRequest, results));
-        invokeOnUser(user);
-    });
-
-    deployTx.on('error', function (err) {
-        // Deploy request failed
-        console.log(util.format("\nFailed to deploy chaincode: request=%j, error=%j", deployRequest, err));
     });
 }
 
@@ -138,7 +113,7 @@ function invokeOnUser(user) {
     // Construct the invoke request
     var invokeRequest = {
         // Name (hash) required for invoke
-        chaincodeID: testChaincodeID,
+        chaincodeID: activeChaincodeID,
         // Function to trigger
         fcn: config.invokeRequest.functionName,
         // Parameters for the invoke function
@@ -169,7 +144,7 @@ function queryUser(user) {
     // Construct the query request
     var queryRequest = {
         // Name (hash) required for query
-        chaincodeID: testChaincodeID,
+        chaincodeID: activeChaincodeID,
         // Function to trigger
         fcn: config.queryRequest.functionName,
         // Existing state variable to retrieve

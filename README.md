@@ -29,6 +29,7 @@ The goal is to run [helloblockchain.js](https://github.com/ratnakar-asara/Node-S
      
 1. From SDK-Demo folder run node program:
 	```
+	export ACTIVE_CHAINCODE_ID=<CHAINCODE_ID>
 	node helloblockchain.js
 	```
 	**To enable debug logs :**
